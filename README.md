@@ -4,12 +4,12 @@ This is a penetration test on Mediroza website as part of my internship project 
 # Penetration Testing Project — Mediroza General Hospital
 
 ## Overview
-A black-box penetration test conducted against `medirozahospital.com` as part of a structured 5-day training engagement with Networkwalks. The objective was to identify vulnerabilities in the hospital's web infrastructure, exploit them to demonstrate real-world impact, and produce a professional penetration testing report.
+A black box penetration test conducted against `medirozahospital.com` as part of the structured training engagement with Networkwalks. The objective was to identify vulnerabilities in the hospital's web infrastructure, exploit them to demonstrate real-world impact, and produce a professional penetration testing report.
 
-**Engagement Type:** Black-box Penetration Test
-**Target:** https://medirozahospital.com
-**Authorization:** Written permission granted by client for the duration of the engagement
-**Scope:** Testing limited to the target domain only — no social engineering, no denial-of-service, no testing outside agreed scope
+**Engagement Type:** Black-box Penetration Test  
+**Target:** https://medirozahospital.com  
+**Authorization:** Written permission granted by client for the duration of the engagement  
+**Scope:** Testing limited to the target domain only — no social engineering, no denial-of-service, no testing outside agreed scope  
 
 ---
 
@@ -141,6 +141,19 @@ This engagement demonstrated how individually "minor" findings compound into cri
 - A single overlooked metadata comment exposed an entire unprotected database backup containing PII, salaries, and ownership records.
 
 It reinforced the value of **thorough, methodical reconnaissance** — the same clue (`/old/`) surfaced independently through both `robots.txt` enumeration and file metadata analysis, showing why cross-referencing findings across different recon techniques matters in real engagements.
+
+## Challenges Encountered
+
+A significant obstacle during initial recon was a **JavaScript-based "browser verification" challenge** sitting in front of the main site on ports 80/443. Every non-browser tool used — `curl`, `whatweb`, `sqlmap`, `gobuster` — received the same generic "verifying your browser" interstitial page instead of real site content, since none of these tools execute JavaScript.
+
+This had a direct, cascading effect on recon accuracy:
+- `robots.txt` and `sitemap.xml` returned the challenge page rather than their actual contents, masking the `Disallow: /patient/ /staff/ /old/` entries that were the real starting point for the entire engagement.
+- `sqlmap` reported "no forms found" because it only ever saw the JS-challenge wrapper, not the real login form.
+- `gobuster` results were unreliable, since the challenge page was served on virtually every path, making it difficult to distinguish genuine directories from false positives.
+
+**Lesson learned:** When automated tooling is met with suspiciously uniform responses across every request (same title, same content length, same status code regardless of path), that's a strong signal of bot-protection middleware rather than a real 404 or empty result. The correct response is to verify manually in a real browser first — letting the JS challenge resolve — and then either continue recon manually or export the resulting session cookies for reuse in command-line tools (`curl -b`, `gobuster -c`), rather than assuming the tool output reflects the actual site.
+
+This is a realistic obstacle in modern pentesting, where CDN-level bot protection (Cloudflare, OpenResty-based WAFs, etc.) is increasingly common even on smaller sites, and recognizing it early saves significant wasted effort chasing dead ends elsewhere (in this case, time spent probing the cPanel/WHM ports as an alternative entry point).
 
 ## Tools Used
 `curl` · Burp-style manual SQLi testing · `exiftool` · `qpdf` · John the Ripper–style wordlist cracking · `wget` · `whatweb` · `theHarvester` · `gobuster` · `nmap`
